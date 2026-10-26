@@ -45,6 +45,12 @@ label{font-size:12px;color:#9ec1ff;display:block;margin:8px 0 4px}
 .level{font-size:13px;line-height:1.8}
 .level b{color:#ffe58a}
 textarea{width:100%;background:#0b1220;color:#e6edf3;border:1px solid #334155;border-radius:10px;padding:9px;font-size:14px}
+.bigbtn{font-size:22px;font-weight:800;padding:16px 10px;border-radius:14px}
+.bigbtn.dim{background:#1e293b;color:#64748b}
+.bigbtn.lit-buy{background:#16a34a;color:#fff;animation:glowBuy 1.2s infinite}
+.bigbtn.lit-sell{background:#dc2626;color:#fff;animation:glowSell 1.2s infinite}
+@keyframes glowBuy{0%,100%{box-shadow:0 0 14px #22c55e}50%{box-shadow:0 0 34px #22c55e}}
+@keyframes glowSell{0%,100%{box-shadow:0 0 14px #ef4444}50%{box-shadow:0 0 34px #ef4444}}
 </style>
 </head>
 <body>
@@ -58,6 +64,10 @@ Eksekusi tetap manual di aplikasi MT5 resmi. Data seed per <b>26 Okt 2026 sore W
 <div class="card">
 <h2>🎯 Sinyal — Multi-Pair</h2>
 <div class="tabs" id="pairtabs"></div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0">
+<button id="buyBtn" class="bigbtn dim" onclick="pressSide('BUY')">BUY</button>
+<button id="sellBtn" class="bigbtn dim" onclick="pressSide('SELL')">SELL</button>
+</div>
 <div id="sigStandby">
 <p style="font-size:14px;line-height:1.7;color:#8fa3c0">🔎 <b style="color:#e6edf3">Belum ada sinyal untuk <span id="standbyPair">XAUUSD</span>.</b> Sistem memantau — sinyal hanya muncul kalau sudah benar-benar ada momentum BUY/SELL.</p>
 <p style="font-size:13px;line-height:1.7">Trigger siaga: <b id="standbyTrigger">SELL jika break bersih &lt; 3990</b> <span id="standbyExtra">(TP <span id="standbyTP">3980 → 3950</span>, batal jika <span id="standbyInv">reclaim 4060–4070</span>)</span>. Detail level ada di Panel Level &amp; Alert.</p>
@@ -74,8 +84,6 @@ Eksekusi tetap manual di aplikasi MT5 resmi. Data seed per <b>26 Okt 2026 sore W
 <div class="kv"><span>Day low / high</span><b id="sigLH">—</b></div>
 </div>
 <div>
-<div class="kv"><span>Verdict risiko (aturan 1%)</span><b id="sigVerdict">—</b></div>
-<div class="kv"><span>Alasan</span><b id="sigAlasan">—</b></div>
 <div class="kv"><span>Confidence</span><b id="sigConf">—</b></div>
 <div class="kv"><span>Confluence</span><b id="sigConfl">—</b></div>
 </div>
@@ -92,7 +100,7 @@ Eksekusi tetap manual di aplikasi MT5 resmi. Data seed per <b>26 Okt 2026 sore W
 <button onclick="resetData()" style="margin-top:8px;background:#1e293b">Kembali ke Data Awal</button>
 <div id="pasteMsg" style="margin-top:10px;font-size:13px;line-height:1.6"></div>
 <div class="small" style="margin-top:8px">Terakhir diterapkan: <span id="appliedAt">— (masih data awal 26 Okt sore WIB)</span></div>
-<p class="small">Format kode: JSON dengan field tanggal, signals{SYMBOL:{harga,sinyal,trigger,tp,inv,lh,verdict,alasan,conf,confl,triggerSiaga,note}}, xau{...} (alias XAUUSD, masih didukung), agen{7,4,3,1,2,5,6}, ranking[{s,h,c,b,sk}], top, konf. Tiap pair punya tab sinyal sendiri; kalau sinyal WAIT, tab pair itu kembali ke mode memantau (tidak menampilkan sinyal). Kalau format salah, app memberi tahu dan tidak ada data yang rusak.</p>
+<p class="small">Format kode: JSON dengan field tanggal, signals{SYMBOL:{harga,sinyal,trigger,tp,inv,lh,conf,confl,triggerSiaga,note}}, xau{...} (alias XAUUSD, masih didukung), agen{7,4,3,1,2,6}, ranking[{s,h,c,b,sk}], top, konf. Tiap pair punya tab sinyal sendiri; kalau sinyal WAIT, tab pair itu kembali ke mode memantau (tidak menampilkan sinyal). Kalau format salah, app memberi tahu dan tidak ada data yang rusak.</p>
 </div>
 
 <div class="card">
@@ -100,18 +108,20 @@ Eksekusi tetap manual di aplikasi MT5 resmi. Data seed per <b>26 Okt 2026 sore W
 <p class="small">Chart live dari TradingView (butuh internet). Pilih simbol:</p>
 <div class="tabs" id="symtabs"></div>
 <div id="tvchart"></div>
-<p class="small">VOL_80 tidak ada di daftar karena tidak punya feed publik — lihat Panel VOL_80 di bawah.</p>
+<div id="tvfallback" style="display:none;margin-top:10px;font-size:13px;line-height:1.7;background:#3a2a00;border:1px solid #8a6d00;border-radius:10px;padding:10px">⚠️ Chart TradingView gagal dimuat. Penyebab umum: internet lambat, adblock/DNS memblokir TradingView, atau dibuka lewat preview dalam aplikasi. Coba refresh, atau buka di Chrome. Alternatif: <a id="tvlink" href="https://www.tradingview.com/chart/?symbol=OANDA%3AXAUUSD" target="_blank" rel="noopener" style="color:#5ea0ff">buka chart XAUUSD di TradingView</a>.</div>
+<h3>📊 Analisa Indikator TradingView</h3>
+<p class="small">Rating BUY/SELL dari Moving Average + Osilator TradingView (bisa ganti timeframe 1m–1D di dalam widget). Ini analisa indikator umum — BUKAN sinyal sistem 7 agen. Sinyal keputusan tetap dari panel sinyal di atas, yang sudah lewat aturan risiko 1% dan level trigger-mu.</p>
+<div id="tvta"></div>
 </div>
 
 <div class="card">
-<h2>⚙️ Visual 7 Agen Saat Bekerja</h2>
+<h2>⚙️ Visual Agen Saat Bekerja</h2>
 <p class="small">Status per analisis 26 Okt 2026 siang WIB. Skor &amp; verdict diperbarui tiap analisis baru dijalankan.</p>
 <div class="agent"><div class="num">7</div><div><b>Multi-Market Scanner</b> <span class="badge ok">SELESAI</span><p>TOP_PICK: <b>NZDUSD</b> (momentum harian terkuat). Dolar menguat luas → konfirmasi bias bearish gold: <b>SEARAH</b>.</p></div></div>
 <div class="agent"><div class="num">4</div><div><b>Fundamental</b> <span class="badge ok">SELESAI</span><p>CAUTION — Rapat Fed 27–28 Okt di depan. Blackout ±30 menit sekitar pengumuman.</p></div></div>
 <div class="agent"><div class="num">3</div><div><b>Session &amp; Volatility</b> <span class="badge ok">SELESAI</span><p>Sesi London aktif (15:00–23:30 WIB). Overlap London–NY 20:30–22:30 WIB = prime time.</p></div></div>
 <div class="agent"><div class="num">1</div><div><b>Technical</b> <span class="badge ok">SELESAI</span><p>D1 bearish (downtrend dari 4233). Intraday rebound dari 3978 ke ~4016.</p></div></div>
 <div class="agent"><div class="num">2</div><div><b>Market Structure</b> <span class="badge ok">SELESAI</span><p>Struktur bearish. Dip pagi ke 3978 = false break, harga kembali di atas 4000.</p></div></div>
-<div class="agent"><div class="num">5</div><div><b>Risk Manager (VETO)</b> <span class="badge ok">SELESAI</span><p>VETO aktif: SL $25–30 @ 0,01 lot = 2,5–3% &gt; batas 1% ($10) → NO_TRADE.</p></div></div>
 <div class="agent"><div class="num">6</div><div><b>Master Decision</b> <span class="badge ok">SELESAI</span><p>Keputusan: <b>WAIT</b> — belum ada break bersih di bawah 3990.</p></div></div>
 </div>
 
@@ -128,27 +138,8 @@ Eksekusi tetap manual di aplikasi MT5 resmi. Data seed per <b>26 Okt 2026 sore W
 <tr><td>EURUSD</td><td>1,1212</td><td>-0,11%</td><td>USD menguat</td><td>61</td></tr>
 <tr><td>USDCAD</td><td>1,4015</td><td>+0,04%</td><td>USD menguat tipis</td><td>54</td></tr>
 <tr><td>AUDUSD</td><td>0,7032</td><td>-0,01%</td><td>Flat</td><td>51</td></tr>
-<tr><td>VOL_80</td><td colspan="4"><span class="badge grey">DATA_TIDAK_TERSEDIA — tanpa screenshot MT5 terbaru</span></td></tr>
 </table>
 <p class="small">Konfirmasi XAUUSD: <b id="konfVal">SEARAH</b> — dolar menguat di 6 dari 7 pair (AUDUSD flat) → mendukung bias bearish gold. Harga seed dari feed web 26 Okt 2026 (Arincen/Shunya/PricePing); konfirmasi akhir di MT5.</p>
-</div>
-
-<div class="card">
-<h2>🧮 Kalkulator Lot &amp; Risiko</h2>
-<p class="small">Aturan Anda: saldo default $1.000, risiko 1%/trade, RR minimal 1:1,5, maks 2 posisi. Kalkulator ini yang selama ini mem-veto setup XAUUSD — sekarang Anda bisa cek sendiri sebelum bertanya.</p>
-<label>Saldo akun ($)</label><input id="bal" type="number" value="1000">
-<label>Risiko per trade (%)</label><input id="riskpct" type="number" value="1" step="0.1">
-<label>Simbol</label>
-<select id="symsel">
-<option value="XAUUSD">XAUUSD (1 lot = 100 oz)</option>
-<option value="FX">Pair forex (isi contract value dari Specification MT5)</option>
-</select>
-<label id="cvlabel" style="display:none">Contract value per 1 lot (dari Specification MT5)</label>
-<input id="cv" type="number" value="100000" style="display:none">
-<label>Jarak SL (XAUUSD: $ | Forex: harga, mis. 0,0050)</label><input id="sld" type="number" value="30" step="any">
-<label>Jarak TP (satuan sama dengan SL)</label><input id="tpd" type="number" value="50" step="any">
-<button onclick="calc()" style="margin-top:12px">Hitung</button>
-<div id="calcres" style="margin-top:12px;font-size:14px;line-height:1.8"></div>
 </div>
 
 <div class="card">
@@ -160,11 +151,6 @@ Eksekusi tetap manual di aplikasi MT5 resmi. Data seed per <b>26 Okt 2026 sore W
 <button onclick="alertXAU()" style="margin-top:10px">Cek Status Level</button>
 <button onclick="notifReq()" style="margin-top:8px;background:#1e293b">Aktifkan Notifikasi Browser</button>
 <div id="xauout" style="margin-top:10px;font-size:14px;line-height:1.8"></div>
-<h3>VOL_80</h3>
-<div class="level">Base Februari: <b>96.000</b> • Zona buy limit: <b>96.000–100.000</b><br>Resisten: <b>143.000 / 191.000 / 240.000</b> • Batal jika close D1 <b>90.000</b></div>
-<label>Harga VOL_80 dari MT5 Anda</label><input id="pvol" type="number" step="any" placeholder="mis. 96702">
-<button onclick="alertVOL()" style="margin-top:10px">Cek Status Level</button>
-<div id="volout" style="margin-top:10px;font-size:14px;line-height:1.8"></div>
 </div>
 
 <div class="card">
@@ -192,17 +178,6 @@ Eksekusi tetap manual di aplikasi MT5 resmi. Data seed per <b>26 Okt 2026 sore W
 </div>
 
 <div class="card">
-<h2>🟣 Panel VOL_80</h2>
-<p class="small">Pair ini <b>tidak punya live candle publik</b> — panel ini adalah "markas" VOL_80 di app. Update dari screenshot MT5 Anda.</p>
-<div class="kv"><span>Bacaan terakhir</span><b>~96.702 (D1, 24 Okt 2026 — base Februari)</b></div>
-<div class="kv"><span>Rencana</span><b>Buy limit 96.000–100.000 (opsi agresif) atau tunggu konfirmasi reversal (rekomendasi)</b></div>
-<div class="kv"><span>SL</span><b>Di bawah 90.000 (close D1 &lt; 90.000 = rencana batal, tanpa averaging down)</b></div>
-<div class="kv"><span>TP</span><b>143.000 / 191.000 / 240.000</b></div>
-<div class="kv"><span>Lot</span><b>Belum dihitung — menunggu Specification MT5 + saldo akun</b></div>
-<div class="kv"><span>Status</span><b>Menunggu konfirmasi reversal (close D1/H4 di atas ~110.000, lebih kuat di atas 143.000)</b></div>
-</div>
-
-<div class="card">
 <h2>🎫 Tiket MT5 (Bukan Order Otomatis)</h2>
 <p style="font-size:14px;line-height:1.7">Tombol di app ini <b>tidak mengirim order ke broker</b> — login broker tidak pernah ditanam di app. Yang dilakukan tombol: menyalin ringkasan sinyal lengkap untuk Anda eksekusi manual di aplikasi MT5 resmi dalam hitungan detik.</p>
 <div id="ticket" style="background:#0b1220;border:1px solid #22345a;border-radius:10px;padding:12px;font-size:13px;line-height:1.8">
@@ -219,39 +194,36 @@ Eksekusi: manual di MT5 resmi.
 </main>
 <script>
 var SYMS=[["OANDA:XAUUSD","XAUUSD"],["OANDA:EURUSD","EURUSD"],["OANDA:GBPUSD","GBPUSD"],["OANDA:USDJPY","USDJPY"],["OANDA:AUDUSD","AUDUSD"],["OANDA:NZDUSD","NZDUSD"],["OANDA:USDCAD","USDCAD"],["OANDA:USDCHF","USDCHF"]];
+var tvTimer=null;
+function loadTA(sym){
+  var c=document.getElementById('tvta');if(!c)return;c.innerHTML='';
+  var s=document.createElement('script');s.src='https://s.tradingview.com/external-embedding/embed-widget-technical-analysis.js';s.async=true;
+  s.textContent=JSON.stringify({interval:'1h',width:'100%',height:450,symbol:sym,showIntervalTabs:true,locale:'id',colorTheme:'dark'});
+  c.appendChild(s);
+}
 function loadChart(sym){
   var c=document.getElementById('tvchart');c.innerHTML='';
   var s=document.createElement('script');s.src='https://s.tradingview.com/external-embedding/embed-widget-advanced-chart.js';s.async=true;
   s.textContent=JSON.stringify({symbol:sym,theme:'dark',interval:'60',allow_symbol_change:false,hide_side_toolbar:false,studies:[],support_host:'https://www.tradingview.com',width:'100%',height:420});
   c.appendChild(s);
+  loadTA(sym);
   document.querySelectorAll('#symtabs button').forEach(function(b){b.classList.toggle('on',b.dataset.s===sym)});
+  document.getElementById('tvfallback').style.display='none';
+  document.getElementById('tvlink').href='https://www.tradingview.com/chart/?symbol='+encodeURIComponent(sym);
+  document.getElementById('tvlink').textContent='buka chart '+sym.replace('OANDA:','')+' di TradingView';
+  if(tvTimer)clearInterval(tvTimer);
+  var tries=0;
+  tvTimer=setInterval(function(){
+    tries++;
+    if(document.querySelector('#tvchart iframe')){document.getElementById('tvfallback').style.display='none';clearInterval(tvTimer);}
+    else if(tries>=15){document.getElementById('tvfallback').style.display='block';clearInterval(tvTimer);}
+  },2000);
 }
 SYMS.forEach(function(p){
   var b=document.createElement('button');b.textContent=p[1];b.dataset.s=p[0];b.onclick=function(){loadChart(p[0])};
   document.getElementById('symtabs').appendChild(b);
 });
 loadChart('OANDA:XAUUSD');
-document.getElementById('symsel').onchange=function(){
-  var fx=this.value==='FX';
-  document.getElementById('cv').style.display=fx?'block':'none';
-  document.getElementById('cvlabel').style.display=fx?'block':'none';
-};
-function calc(){
-  var bal=parseFloat(document.getElementById('bal').value)||0;
-  var rp=parseFloat(document.getElementById('riskpct').value)||0;
-  var sl=parseFloat(document.getElementById('sld').value)||0;
-  var tp=parseFloat(document.getElementById('tpd').value)||0;
-  var fx=document.getElementById('symsel').value==='FX';
-  var cv=fx?(parseFloat(document.getElementById('cv').value)||0):100;
-  var riskMax=bal*rp/100;
-  var lot=sl>0?(riskMax/(sl*cv)):0;
-  var rr=sl>0?(tp/sl):0;
-  var warn='';
-  if(rp>1)warn+='<br><span style="color:#ffb3b3">⚠️ Risiko di atas 1% melanggar aturan Anda.</span>';
-  if(rr<1.5)warn+='<br><span style="color:#ffb3b3">⚠️ RR di bawah 1:1,5 — di bawah standar sistem.</span>';
-  if(lot<0.01)warn+='<br><span style="color:#ffd9a0">⚠️ Lot di bawah 0,01 (lot minimum) — setup ini praktis tidak bisa dieksekusi di bawah aturan 1%.</span>';
-  document.getElementById('calcres').innerHTML='Risiko maks: <b>$'+riskMax.toFixed(2)+'</b><br>Lot: <b>'+lot.toFixed(4)+'</b><br>RR: <b>1:'+rr.toFixed(2)+'</b>'+warn;
-}
 function notifReq(){ if(!('Notification' in window)){alert('Browser ini tidak mendukung notifikasi.');return;} Notification.requestPermission().then(function(p){alert('Izin notifikasi: '+p);}); }
 function ping(msg){ if(('Notification' in window)&&Notification.permission==='granted'){new Notification('Agen Trading', {body:msg});} }
 function alertXAU(){
@@ -264,17 +236,6 @@ function alertXAU(){
   else if(p>4070){out+='<span class="badge grey">INVALIDASI</span> Harga di atas 4070 — rencana bearish batal.';}
   else{out+='<span class="badge ok">AMAN</span> Jarak ke trigger 3990: <b>$'+(p-3990).toFixed(2)+'</b>. Day high 4019.';}
   document.getElementById('xauout').innerHTML=out;
-}
-function alertVOL(){
-  var p=parseFloat(document.getElementById('pvol').value);
-  if(!p){document.getElementById('volout').innerHTML='Masukkan harga dulu.';return;}
-  var out='Harga MT5 Anda: <b>'+p.toLocaleString('id-ID')+'</b><br>';
-  if(p<90000){out+='<span class="badge sell">RENCANA BATAL</span> Close di bawah 90.000 = rencana buy base batal. Tanpa averaging down.';ping('VOL_80 di bawah 90.000 — rencana buy batal.');}
-  else if(p>=96000&&p<=100000){out+='<span class="badge warn">DI ZONA BUY LIMIT</span> Harga di zona 96.000–100.000. Ingat: opsi agresif; rekomendasi tetap tunggu konfirmasi reversal.';}
-  else if(p>100000&&p<110000){out+='<span class="badge grey">MENDEKATI KONFIRMASI</span> Konfirmasi awal di atas ~110.000.';}
-  else if(p>=143000){out+='<span class="badge ok">RESISTEN 143K TEMBUS</span> Konfirmasi kuat — TP1 tercapai dari zona base.';}
-  else{out+='<span class="badge ok">DI LUAR ZONA KUNCI</span> Pantau level 96.000 / 110.000 / 143.000.';}
-  document.getElementById('volout').innerHTML=out;
 }
 function wibNow(){
   var d=new Date();var w=new Date(d.getTime()+7*3600*1000);
@@ -354,8 +315,6 @@ function renderSignal(){
     document.getElementById('sigTP').textContent=s.tp||'—';
     document.getElementById('sigInv').textContent=s.inv||'—';
     document.getElementById('sigLH').textContent=s.lh||'—';
-    document.getElementById('sigVerdict').textContent=s.verdict||'—';
-    document.getElementById('sigAlasan').textContent=s.alasan||'—';
     document.getElementById('sigConf').textContent=s.conf||'—';
     document.getElementById('sigConfl').textContent=s.confl||'—';
     var nn=document.getElementById('sigNote');
@@ -372,13 +331,30 @@ function renderSignal(){
     }
   }
   markPairTabs();
+  paintButtons();
+}
+function paintButtons(){
+  var s=SIG[CUR]||{};
+  var su=(s.sinyal||'').toUpperCase();
+  var bb=document.getElementById('buyBtn'),sb=document.getElementById('sellBtn');
+  if(!bb||!sb)return;
+  bb.className='bigbtn'+(su==='BUY'?' lit-buy':' dim');
+  sb.className='bigbtn'+(su==='SELL'?' lit-sell':' dim');
+  bb.disabled=(su!=='BUY');sb.disabled=(su!=='SELL');
+}
+function pressSide(side){
+  var s=SIG[CUR]||{};
+  if(((s.sinyal||'').toUpperCase())!==side)return;
+  var t='Sinyal '+CUR+' '+side+' | Entry: '+(s.harga||'-')+' | Trigger: '+(s.trigger||'-')+' | TP '+(s.tp||'-')+' | Invalidasi: '+(s.inv||'-')+' | Eksekusi manual di MT5 resmi.';
+  if(navigator.clipboard){navigator.clipboard.writeText(t).then(function(){alert('Tiket '+side+' '+CUR+' disalin. Eksekusi manual di MT5.');});}
+  else{alert(t);}
 }
 function renderTicket(){
   var s=SIG[CUR]||{};
   var su=(s.sinyal||'').toUpperCase();
   var t=document.getElementById('ticket');
   if(su==='BUY'||su==='SELL'){
-    t.innerHTML='<b>Sinyal saat ini: '+CUR+' — '+s.sinyal+'</b><br>Entry: '+(s.harga||'-')+' • Trigger: '+(s.trigger||'-')+' • TP '+(s.tp||'-')+' • Invalidasi: '+(s.inv||'-')+'<br>Verdict risiko: '+(s.verdict||'-')+' — '+(s.alasan||'')+'<br>Eksekusi: manual di MT5 resmi.';
+    t.innerHTML='<b>Sinyal saat ini: '+CUR+' — '+s.sinyal+'</b><br>Entry: '+(s.harga||'-')+' • Trigger: '+(s.trigger||'-')+' • TP '+(s.tp||'-')+' • Invalidasi: '+(s.inv||'-')+'<br>Eksekusi: manual di MT5 resmi.';
   }else{
     var tri=s.triggerSiaga||'Belum ditetapkan — momentum dipantau dari tembus day high/low atau gerak ≥0,30%/15 menit';
     t.innerHTML='<b>Belum ada sinyal aktif untuk '+CUR+'.</b><br>Sistem memantau: '+tri+'.<br>Saat sinyal BUY/SELL aktif keluar, tiket lengkap muncul di sini.<br>Eksekusi: manual di MT5 resmi.';
@@ -398,7 +374,7 @@ function applyData(d){
     renderSignal();renderTicket();
   }
   if(d.agen){
-    var order=['7','4','3','1','2','5','6'];
+    var order=['7','4','3','1','2','6'];
     document.querySelectorAll('.agent p').forEach(function(n,i){if(d.agen[order[i]])n.textContent=d.agen[order[i]];});
   }
   if(d.ranking){
@@ -409,8 +385,6 @@ function applyData(d){
       var star=(d.top&&r.s===d.top)?' ⭐ TOP_PICK':'';
       row.innerHTML='<td><b>'+r.s+star+'</b></td><td>'+r.h+'</td><td>'+r.c+'</td><td>'+r.b+'</td><td>'+r.sk+'</td>';
     });
-    var row=t.insertRow();
-    row.innerHTML='<td>VOL_80</td><td colspan="4"><span class="badge grey">DATA_TIDAK_TERSEDIA — tanpa screenshot MT5 terbaru</span></td>';
   }
   if(d.konf)document.getElementById('konfVal').textContent=d.konf;
   return true;
